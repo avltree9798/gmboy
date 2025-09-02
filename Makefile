@@ -1,0 +1,26 @@
+CC = gcc
+CFLAGS = -I./src/include -I./include \
+-I/opt/homebrew/Cellar/sdl2_image/2.8.8/include \
+-I/opt/homebrew/Cellar/sdl2_image/2.8.8/include/SDL2 \
+-I/opt/homebrew/Cellar/sdl2_ttf/2.24.0/include \
+-I/opt/homebrew/Cellar/sdl2_ttf/2.24.0/include/SDL2 \
+-I/opt/homebrew/Cellar/sdl2/2.32.8/include \
+-I/opt/homebrew/Cellar/sdl2/2.32.8/include/SDL2
+LDFLAGS = -L/opt/homebrew/Cellar/sdl2_image/2.8.8/lib -L/opt/homebrew/Cellar/sdl2_ttf/2.24.0/lib -L/opt/homebrew/Cellar/sdl2/2.32.8/lib -lSDL2_image -lSDL2_ttf -lSDL2
+
+SRC = src/lib/cpu_fetch.c src/lib/cpu_proc.c src/lib/instructions.c src/lib/emu.c src/lib/cpu_util.c src/lib/bus.c src/lib/cpu.c src/lib/emu.c src/lib/cart.c src/gmboy/main.c
+OBJ = $(SRC:%.c=build/%.o)
+TARGET = build/gmboy
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+build/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf build

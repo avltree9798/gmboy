@@ -1,0 +1,7 @@
+
+build/*
+roms/*
+.vscode/
+!build/.gitignore
+!roms/.gitignore
+
