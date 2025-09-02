@@ -127,19 +127,19 @@ const char *cart_type_name() {
 
 bool cart_load(char* cart) {
     snprintf(ctx.filename, sizeof(ctx.filename), "%s", cart);
-    FILE* f = fopen(ctx.filename, "rb");
-    if (!f) {
-        printf("Failed to open: %s\n", ctx.filename);
+    FILE *fp = fopen(cart, "r");
+    if (!fp) {
+        printf("Failed to open: %s\n", cart);
         return false;
     }
-    printf("Successfully opened: %s\n", ctx.filename);
-    fseek(f, 0, SEEK_END);
-    ctx.rom_size = ftell(f);
-    rewind(f);
-    ctx.rom_data = (u8*)malloc(ctx.rom_size);
-    fread(ctx.rom_data, ctx.rom_size, 1, f);
-    fclose(f);
-    ctx.header = (rom_header*)&ctx.rom_data[0x100];
+    printf("Opened: %s\n", ctx.filename);
+    fseek(fp, 0, SEEK_END);
+    ctx.rom_size = ftell(fp);
+    rewind(fp);
+    ctx.rom_data = malloc(ctx.rom_size);
+    fread(ctx.rom_data, ctx.rom_size, 1, fp);
+    fclose(fp);
+    ctx.header = (rom_header *)(ctx.rom_data + 0x100);
     ctx.header->title[15] = 0;
     printf("Cartridge Loaded:\n");
     printf("\t Title    : %s\n", ctx.header->title);
@@ -149,7 +149,7 @@ bool cart_load(char* cart) {
     printf("\t LIC Code : %2.2X (%s)\n", ctx.header->lic_code, cart_lic_name());
     printf("\t ROM Vers : %2.2X\n", ctx.header->version);
     u16 x = 0;
-    for(u16 i = 0x0134; i <= 0x014C; i++) {
+    for (u16 i=0x0134; i<=0x014C; i++) {
         x = x - ctx.rom_data[i] - 1;
     }
     printf("\t Checksum : %2.2X (%s)\n", ctx.header->checksum, (x & 0xFF) ? "PASSED" : "FAILED");
@@ -161,6 +161,6 @@ u8 cart_read(u16 address) {
 }
 
 void cart_write(u16 address, u8 value) {
-    printf("Unsupported cart_write(%04X, %02X)\n", address, value);
-    // NO_IMPL
+    printf("cart_write(%04X)\n", address);
+    NO_IMPL
 }

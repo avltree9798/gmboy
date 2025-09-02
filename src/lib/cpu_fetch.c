@@ -12,6 +12,9 @@ void fetch_data() {
         case AM_R:
             ctx.fetched_data = cpu_read_reg(ctx.curr_inst->reg_1);
             break;
+        case AM_R_R:
+            ctx.fetched_data = cpu_read_reg(ctx.curr_inst->reg_2);
+            return;
         case AM_R_D8:
             ctx.fetched_data = bus_read(ctx.regs.pc);
             emu_cycles(1);
@@ -38,7 +41,7 @@ void fetch_data() {
         }
         case AM_R_MR: {
             u16 addr = cpu_read_reg(ctx.curr_inst->reg_2);
-            if (ctx.curr_inst->reg_1 == RT_C) {
+            if (ctx.curr_inst->reg_2 == RT_C) {
                 addr |= 0xFF00;
             }
             ctx.fetched_data = bus_read(addr);
@@ -72,16 +75,20 @@ void fetch_data() {
             break;
         }
         case AM_R_A8: {
-            ctx.fetched_data = bus_read(cpu_read_reg(ctx.regs.pc));
+            u8 imm = bus_read(ctx.regs.pc);
             emu_cycles(1);
             ctx.regs.pc++;
+            ctx.fetched_data = bus_read(0xFF00 | imm);
+            emu_cycles(1);
             break;
         }
         case AM_A8_R: {
-            ctx.mem_dest = bus_read(ctx.regs.pc | 0xFF00); 
+            u8 imm = bus_read(ctx.regs.pc);
             emu_cycles(1);
             ctx.regs.pc++;
+            ctx.mem_dest = 0xFF00 | imm;
             ctx.dest_is_mem = true;
+            ctx.fetched_data = cpu_read_reg(ctx.curr_inst->reg_2);
             break;
         }
         case AM_HL_SPR: {
@@ -102,6 +109,7 @@ void fetch_data() {
             emu_cycles(1);
             u16 hi = bus_read(ctx.regs.pc + 1);
             emu_cycles(1);
+            ctx.mem_dest = lo | (hi << 8);
             ctx.dest_is_mem = true;
             ctx.regs.pc += 2;
             ctx.fetched_data = cpu_read_reg(ctx.curr_inst->reg_2);

@@ -23,3 +23,6 @@ bool cart_load(char* cart);
 
 u8 cart_read(u16 address);
 void cart_write(u16 address, u8 value);
+
+u8 cpu_get_ie_register();
+void cpu_set_ie_register(u8 value);

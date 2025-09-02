@@ -2,6 +2,7 @@
 #include <emu.h>
 #include <common.h>
 #include <bus.h>
+#include <stack.h>
 
 //processes CPU instructions...
 
@@ -40,21 +41,35 @@ static inline void write_reg(cpu_context *c, reg_type rt, u16 v) {
 
 static void proc_ld(cpu_context *ctx) {
     if (ctx->dest_is_mem) {
+        //LD (BC), A for instance...
+
         if (ctx->curr_inst->reg_2 >= RT_AF) {
-            bus_write16(ctx->mem_dest, ctx->fetched_data);
+            //if 16 bit register...
             emu_cycles(1);
-            return;
+            bus_write16(ctx->mem_dest, ctx->fetched_data);
+        } else {
+            bus_write(ctx->mem_dest, ctx->fetched_data);
         }
-        bus_write(ctx->mem_dest, ctx->fetched_data);
+
+        emu_cycles(1);
+        
         return;
     }
+
     if (ctx->curr_inst->mode == AM_HL_SPR) {
-        u8 hflag = (cpu_read_reg(ctx->curr_inst->reg_2) & 0xF) + (ctx->fetched_data & 0xF) >= 0x10;
-        u8 cflag = (cpu_read_reg(ctx->curr_inst->reg_2) & 0xFF) + (ctx->fetched_data & 0xFF) >= 0x100;
+        u8 hflag = (cpu_read_reg(ctx->curr_inst->reg_2) & 0xF) + 
+            (ctx->fetched_data & 0xF) >= 0x10;
+
+        u8 cflag = (cpu_read_reg(ctx->curr_inst->reg_2) & 0xFF) + 
+            (ctx->fetched_data & 0xFF) >= 0x100;
+
         cpu_set_flags(ctx, 0, 0, hflag, cflag);
-        cpu_set_reg(ctx->curr_inst->reg_1, cpu_read_reg(ctx->curr_inst->reg_2) + (char)ctx->fetched_data);
+        cpu_set_reg(ctx->curr_inst->reg_1, 
+            cpu_read_reg(ctx->curr_inst->reg_2) + (char)ctx->fetched_data);
+
         return;
     }
+
     cpu_set_reg(ctx->curr_inst->reg_1, ctx->fetched_data);
 }
 
@@ -97,19 +112,105 @@ static bool check_cond(cpu_context *ctx) {
     return false;
 }
 
-static void proc_jp(cpu_context *ctx) {
+static void goto_addr(cpu_context *ctx, u16 addr, bool push_pc) {
     if (check_cond(ctx)) {
-        ctx->regs.pc = ctx->fetched_data;
+        if (push_pc) {
+            stack_push16(ctx->regs.pc);
+            emu_cycles(2);
+        }
+        ctx->regs.pc = addr;
         emu_cycles(1);
     }
+}
+
+static void proc_jp(cpu_context* ctx) {
+    goto_addr(ctx, ctx->fetched_data, false);
+}
+
+static void proc_jr(cpu_context* ctx) {
+    char rel = (char) (ctx->fetched_data & 0xFF);
+    u16 addr = ctx->regs.pc + rel;
+    goto_addr(ctx, addr, false);
+}
+
+static void proc_rst(cpu_context* ctx) {
+    goto_addr(ctx, ctx->curr_inst->param, true);
+}
+
+
+static void proc_call(cpu_context* ctx) {
+    goto_addr(ctx, ctx->fetched_data, true);
+}
+
+static void proc_ret(cpu_context* ctx) {
+    if (ctx->curr_inst->cond != CT_NONE) {
+        emu_cycles(1);
+    }
+    if (check_cond(ctx)) {
+        u16 lo = stack_pop();
+        emu_cycles(1);
+        u16 hi = stack_pop();
+        emu_cycles(1);
+        u16 n = (hi << 8) | lo;
+        ctx->regs.pc = n;
+        emu_cycles(1);
+    }
+}
+
+static void proc_reti(cpu_context *ctx) {
+    ctx->int_master_enabled = true;
+    proc_ret(ctx);
+}
+
+static void proc_pop(cpu_context *ctx) {
+    u16 lo = stack_pop();
+    emu_cycles(1);
+    u16 hi = stack_pop();
+    emu_cycles(1);
+
+    u16 n = (hi << 8) | lo;
+    
+    cpu_set_reg(ctx->curr_inst->reg_1, n);
+    if (ctx->curr_inst->reg_1 == RT_AF) {
+        cpu_set_reg(ctx->curr_inst->reg_1, n & 0xFFF0);
+    }
+}
+
+static void proc_push(cpu_context *ctx) {
+    u16 hi = (cpu_read_reg(ctx->curr_inst->reg_1) >> 8) & 0xFF;
+    emu_cycles(1);
+    stack_push(hi);
+    emu_cycles(1);
+    u16 lo = cpu_read_reg(ctx->curr_inst->reg_1) & 0xFF;
+    emu_cycles(1);
+    stack_push(lo);
+    emu_cycles(1);
+}
+
+static void proc_ldh(cpu_context *ctx) {
+    if (ctx->curr_inst->reg_1 == RT_A) {
+        cpu_set_reg(ctx->curr_inst->reg_1, bus_read(0xFF00 | ctx->fetched_data));
+    } else {
+        bus_write(0xFF00 | ctx->fetched_data, ctx->regs.a);
+    }
+
+    emu_cycles(1);
 }
 
 static IN_PROC processors[] = {
     [IN_NONE] = proc_none,
     [IN_NOP] = proc_nop,
     [IN_LD] = proc_ld,
+    [IN_LDH] = proc_ldh,
     [IN_JP] = proc_jp,
+    [IN_JR] = proc_jr,
+    [IN_CALL] = proc_call,
     [IN_DI] = proc_di,
+    [IN_POP] = proc_pop,
+    [IN_PUSH] = proc_push,
+    [IN_RET] = proc_ret,
+    [IN_RETI] = proc_reti,
+    [IN_RST] = proc_rst,
     [IN_XOR] = proc_xor
 };
 

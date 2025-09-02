@@ -22,7 +22,10 @@ typedef struct {
     bool halted;
     bool stepping;
     bool int_master_enabled;
+    u8 ie_register;
 } cpu_context;
+
+cpu_registers* cpu_get_regs();
 
 void cpu_init();
 bool cpu_step();

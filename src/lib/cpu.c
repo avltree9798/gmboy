@@ -6,7 +6,8 @@
 cpu_context ctx = {0};
 
 void cpu_init() {
-
+    ctx.regs.pc = 0x100;
+    ctx.regs.a = 0x01;
 }
 
 static void fetch_instruction() {
@@ -31,9 +32,10 @@ bool cpu_step() {
 
         fetch_instruction();
         fetch_data();
-        printf("%04X: %-7s (%02X %02X %02X) A: %02X B: %02X C: %02X\n", 
+        printf("%04X: %-7s (%02X %02X %02X) A: %02X BC: %02X%02X DE: %02X%02X HL: %02X%02X\n", 
             pc, inst_name(ctx.curr_inst->type), ctx.curr_opcode,
-            bus_read(pc + 1), bus_read(pc + 2), ctx.regs.a, ctx.regs.b, ctx.regs.c);
+            bus_read(pc + 1), bus_read(pc + 2), ctx.regs.a, ctx.regs.b, ctx.regs.c,
+            ctx.regs.d, ctx.regs.e, ctx.regs.h, ctx.regs.l);
 
         if (ctx.curr_inst == NULL) {
             printf("Unknown Instruction! %02X\n", ctx.curr_opcode);
@@ -43,4 +45,12 @@ bool cpu_step() {
         execute();
     }
     return true;
+}
+
+u8 cpu_get_ie_register() {
+    return ctx.ie_register;
+}
+
+void cpu_set_ie_register(u8 value) {
+    ctx.ie_register = value;
 }
