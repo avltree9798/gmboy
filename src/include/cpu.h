@@ -22,7 +22,9 @@ typedef struct {
     bool halted;
     bool stepping;
     bool int_master_enabled;
+    bool enabling_ime;
     u8 ie_register;
+    u8 int_flags; 
 } cpu_context;
 
 cpu_registers* cpu_get_regs();
@@ -32,11 +34,19 @@ bool cpu_step();
 void fetch_data();
 u16 cpu_read_reg(reg_type rt);
 void cpu_set_reg(reg_type rt, u16 val);
-void cpu_set_flags(cpu_context *ctx, char z, char n, char h, char c);
+void cpu_set_flags(cpu_context* ctx, int8_t z, int8_t n, int8_t h, int8_t c);
 
 typedef void (*IN_PROC)(cpu_context *);
 
 IN_PROC inst_get_processor(in_type type);
 
 #define CPU_FLAG_Z BIT(ctx->regs.f, 7)
+#define CPU_FLAG_N BIT(ctx->regs.f, 6)
+#define CPU_FLAG_H BIT(ctx->regs.f, 5)
 #define CPU_FLAG_C BIT(ctx->regs.f, 4)
+
+u8 cpu_read_reg8(reg_type rt);
+void cpu_set_reg8(reg_type rt, u8 val);
+
+u8 cpu_get_int_flags();
+void cpu_set_int_flags(u8 flags);

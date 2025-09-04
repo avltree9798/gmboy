@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <emu.h>
 #include <cart.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include <ui.h>
 #include <cpu.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <SDL2/SDL.h>
 
 static emu_context ctx;
 
@@ -13,6 +15,25 @@ emu_context* emu_get_context() {
 
 void delay(u32 ms) {
     SDL_Delay(ms);
+}
+
+void* cpu_run(void* p) {
+    cpu_init();
+    ctx.running = true;
+    ctx.paused = false;
+    ctx.ticks = 0;
+    while (ctx.running) {
+        if (ctx.paused) {
+            delay(10);
+            continue;
+        }
+        if (!cpu_step()) {
+            printf("CPU step failed\n");
+            return (void *)-3;
+        }
+        ctx.ticks++;
+    }
+    return NULL;
 }
 
 int emu_run(int argc, char** argv) {
@@ -25,24 +46,15 @@ int emu_run(int argc, char** argv) {
         return -2;
     }
     printf("Successfully loaded ROM file: %s\n", argv[1]);
-    printf("SDL INIT\n");
-    SDL_Init(SDL_INIT_VIDEO);
-    printf("TTF INIT\n");
-    TTF_Init();
-    cpu_init();
-    ctx.running = true;
-    ctx.paused = false;
-    ctx.ticks = 0;
-    while (ctx.running) {
-        if (ctx.paused) {
-            delay(10);
-            continue;
-        }
-        if (!cpu_step()) {
-            printf("CPU step failed\n");
-            return -3;
-        }
-        ctx.ticks++;
+    ui_init();
+    pthread_t t1;
+    if(pthread_create(&t1, NULL, cpu_run, NULL) != 0) {
+        fprintf(stderr, "Failed to create CPU thread\n");
+        return -3;
+    }
+    while(!ctx.die) {
+        usleep(1000);
+        ui_handle_events();
     }
     return 0;
 }
