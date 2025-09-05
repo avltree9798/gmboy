@@ -5,7 +5,7 @@
 
 //processes CPU instructions...
 
-void cpu_set_flags(cpu_context* ctx, int8_t z, int8_t n, int8_t h, int8_t c) {
+void cpu_set_flags(cpu_context* ctx, char z, char n, char h, char c) {
     if (z != -1) {
         BIT_SET(ctx->regs.f, 7, z);
     }
@@ -142,7 +142,7 @@ static void proc_cb(cpu_context* ctx) {
 
         case 5: {
             //SRA
-            u8 u = (int8_t)reg_val >> 1;
+            u8 u = (char)reg_val >> 1;
             cpu_set_reg8(reg, u);
             cpu_set_flags(ctx, !u, 0, 0, reg_val & 1);
         } return;
@@ -171,31 +171,76 @@ static void proc_rlca(cpu_context* ctx) {
     bool c = (u >> 7) & 1;
     u = (u << 1) | c;
     ctx->regs.a = u;
+
     cpu_set_flags(ctx, 0, 0, 0, c);
 }
 
 static void proc_rrca(cpu_context* ctx) {
-    u8 u = ctx->regs.a;
-    bool c = u & 1;
-    u = (u >> 1) | (c << 7);
-    ctx->regs.a = u;
-    cpu_set_flags(ctx, 0, 0, 0, c);
+    u8 b = ctx->regs.a & 1;
+    ctx->regs.a >>= 1;
+    ctx->regs.a |= (b << 7);
+
+    cpu_set_flags(ctx, 0, 0, 0, b);
 }
+
 
 static void proc_rla(cpu_context* ctx) {
     u8 u = ctx->regs.a;
     u8 cf = CPU_FLAG_C;
     u8 c = (u >> 7) & 1;
+
     ctx->regs.a = (u << 1) | cf;
     cpu_set_flags(ctx, 0, 0, 0, c);
 }
 
+static void proc_stop(cpu_context* ctx) {
+    fprintf(stderr, "STOPPING!\n");
+    NO_IMPL
+}
+
+static void proc_daa(cpu_context* ctx) {
+    u8 u = 0;
+    int fc = 0;
+
+    if (CPU_FLAG_H || (!CPU_FLAG_N && (ctx->regs.a & 0xF) > 9)) {
+        u = 6;
+    }
+
+    if (CPU_FLAG_C || (!CPU_FLAG_N && ctx->regs.a > 0x99)) {
+        u |= 0x60;
+        fc = 1;
+    }
+
+    ctx->regs.a += CPU_FLAG_N ? -u : u;
+
+    cpu_set_flags(ctx, ctx->regs.a == 0, -1, 0, fc);
+}
+
+static void proc_cpl(cpu_context* ctx) {
+    ctx->regs.a = ~ctx->regs.a;
+    cpu_set_flags(ctx, -1, 1, 1, -1);
+}
+
+static void proc_scf(cpu_context* ctx) {
+    cpu_set_flags(ctx, -1, 0, 0, 1);
+}
+
+static void proc_ccf(cpu_context* ctx) {
+    cpu_set_flags(ctx, -1, 0, 0, CPU_FLAG_C ^ 1);
+}
+
+static void proc_halt(cpu_context* ctx) {
+    ctx->halted = true;
+}
+
 static void proc_rra(cpu_context* ctx) {
-    u8 u = ctx->regs.a;
-    u8 cf = CPU_FLAG_C;
-    u8 c = u & 1;
-    ctx->regs.a = (u >> 1) | (cf << 7);
-    cpu_set_flags(ctx, 0, 0, 0, c);
+    u8 carry = CPU_FLAG_C;
+    u8 new_c = ctx->regs.a & 1;
+
+    ctx->regs.a >>= 1;
+    ctx->regs.a |= (carry << 7);
+
+    cpu_set_flags(ctx, 0, 0, 0, new_c);
 }
 
 static void proc_and(cpu_context* ctx) {
@@ -258,7 +303,7 @@ static void proc_ld(cpu_context* ctx) {
 
         cpu_set_flags(ctx, 0, 0, hflag, cflag);
         cpu_set_reg(ctx->curr_inst->reg_1, 
-            cpu_read_reg(ctx->curr_inst->reg_2) + (int8_t)ctx->fetched_data);
+            cpu_read_reg(ctx->curr_inst->reg_2) + (char)ctx->fetched_data);
 
         return;
     }
@@ -309,8 +354,9 @@ static void proc_jp(cpu_context* ctx) {
 }
 
 static void proc_jr(cpu_context* ctx) {
-    int8_t rel = (int8_t)(ctx->fetched_data & 0xFF);
+    char rel = (char)(ctx->fetched_data & 0xFF);
     u16 addr = ctx->regs.pc + rel;
+
     goto_addr(ctx, addr, false);
 }
 
@@ -464,7 +510,7 @@ static void proc_add(cpu_context* ctx) {
     }
 
     if (ctx->curr_inst->reg_1 == RT_SP) {
-        val = cpu_read_reg(ctx->curr_inst->reg_1) + (int8_t)ctx->fetched_data;
+        val = cpu_read_reg(ctx->curr_inst->reg_1) + (char)ctx->fetched_data;
     }
 
     int z = (val & 0xFF) == 0;
@@ -481,48 +527,11 @@ static void proc_add(cpu_context* ctx) {
     if (ctx->curr_inst->reg_1 == RT_SP) {
         z = 0;
         h = (cpu_read_reg(ctx->curr_inst->reg_1) & 0xF) + (ctx->fetched_data & 0xF) >= 0x10;
-        c = (int)(cpu_read_reg(ctx->curr_inst->reg_1) & 0xFF) + (int)(ctx->fetched_data & 0xFF) > 0x100;
+        c = (int)(cpu_read_reg(ctx->curr_inst->reg_1) & 0xFF) + (int)(ctx->fetched_data & 0xFF) >= 0x100;
     }
 
     cpu_set_reg(ctx->curr_inst->reg_1, val & 0xFFFF);
     cpu_set_flags(ctx, z, 0, h, c);
-}
-
-static void proc_stop(cpu_context* ctx) {
-    fprintf(stderr, "STOP instruction not implemented!\n");
-    NO_IMPL
-}
-
-
-static void proc_daa(cpu_context* ctx) {
-    u8 u = 0;
-    int cf = 0;
-    if (CPU_FLAG_H || !(CPU_FLAG_N && (ctx->regs.a & 0xF) > 9)) {
-        u = 6;
-    }
-    if (CPU_FLAG_C || (!CPU_FLAG_N && ctx->regs.a > 0x99)) {
-        u |= 0x60;
-        cf = 1;
-    }
-    ctx->regs.a += CPU_FLAG_N ? -u : u;
-    cpu_set_flags(ctx, ctx->regs.a == 0, -1, 0, cf);
-}
-
-static void proc_cpl(cpu_context* ctx) {
-    ctx->regs.a = ~ctx->regs.a;
-    cpu_set_flags(ctx, -1, 1, 1, -1);
-}
-
-static void proc_scf(cpu_context* ctx) {
-    cpu_set_flags(ctx, -1, 0, 0, 1);
-}
-
-static void proc_ccf(cpu_context* ctx) {
-    cpu_set_flags(ctx, -1, 0, 0, CPU_FLAG_C ^ 1);
-}
-
-static void proc_halt(cpu_context* ctx) {
-    ctx->halted = true;
 }
 
 static IN_PROC processors[] = {
@@ -549,18 +558,18 @@ static IN_PROC processors[] = {
     [IN_OR] = proc_or,
     [IN_CP] = proc_cp,
     [IN_CB] = proc_cb,
-    [IN_RLCA] = proc_rlca,
     [IN_RRCA] = proc_rrca,
-    [IN_RLA] = proc_rla,
+    [IN_RLCA] = proc_rlca,
     [IN_RRA] = proc_rra,
+    [IN_RLA] = proc_rla,
     [IN_STOP] = proc_stop,
     [IN_HALT] = proc_halt,
     [IN_DAA] = proc_daa,
     [IN_CPL] = proc_cpl,
     [IN_SCF] = proc_scf,
     [IN_CCF] = proc_ccf,
-    [IN_RETI] = proc_reti,
-    [IN_EI] = proc_ei
+    [IN_EI] = proc_ei,
+    [IN_RETI] = proc_reti
 };
 
 IN_PROC inst_get_processor(in_type type) {

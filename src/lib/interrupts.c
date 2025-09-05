@@ -20,10 +20,6 @@ bool int_check(cpu_context* ctx, u16 address, interrupt_type it) {
     return false;
 }
 
-void cpu_request_interrupt(interrupt_type type) {
-
-}
-
 void cpu_handle_interrupts(cpu_context* ctx) {
     if (int_check(ctx, 0x40, IT_VBLANK)) {
 

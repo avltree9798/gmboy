@@ -5,7 +5,9 @@
 #include <cpu.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <SDL2/SDL.h>
+#include <timer.h>
+#include <ui.h>
+#include <dma.h>
 
 static emu_context ctx;
 
@@ -13,11 +15,8 @@ emu_context* emu_get_context() {
     return &ctx;
 }
 
-void delay(u32 ms) {
-    SDL_Delay(ms);
-}
-
 void* cpu_run(void* p) {
+    timer_init();
     cpu_init();
     ctx.running = true;
     ctx.paused = false;
@@ -31,7 +30,6 @@ void* cpu_run(void* p) {
             printf("CPU step failed\n");
             return (void *)-3;
         }
-        ctx.ticks++;
     }
     return NULL;
 }
@@ -55,11 +53,19 @@ int emu_run(int argc, char** argv) {
     while(!ctx.die) {
         usleep(1000);
         ui_handle_events();
+        ui_update();
     }
     return 0;
 }
 
 void emu_cycles(int cpu_cycles) {
+    for (int i =0; i<cpu_cycles; ++i) {
+        for (int n=0; n<4; ++n) {
+            ctx.ticks ++;
+            timer_tick();
+        }
+        dma_tick();
+    }
     // ctx.ticks += cpu_cycles;
     // TODO: Implement cycle counting
 }

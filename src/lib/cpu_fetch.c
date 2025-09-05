@@ -5,6 +5,7 @@
 extern cpu_context ctx;
 
 void fetch_data() {
+    if (ctx.curr_inst == NULL) return;
     ctx.mem_dest = 0;
     ctx.dest_is_mem = false;
     switch(ctx.curr_inst->mode) {
@@ -75,20 +76,16 @@ void fetch_data() {
             break;
         }
         case AM_R_A8: {
-            u8 imm = bus_read(ctx.regs.pc);
+            ctx.fetched_data = bus_read(ctx.regs.pc);
             emu_cycles(1);
             ctx.regs.pc++;
-            ctx.fetched_data = bus_read(0xFF00 | imm);
-            emu_cycles(1);
             break;
         }
         case AM_A8_R: {
-            u8 imm = bus_read(ctx.regs.pc);
+            ctx.mem_dest = bus_read(ctx.regs.pc) | 0xFF00;
+            ctx.dest_is_mem = true;
             emu_cycles(1);
             ctx.regs.pc++;
-            ctx.mem_dest = 0xFF00 | imm;
-            ctx.dest_is_mem = true;
-            ctx.fetched_data = cpu_read_reg(ctx.curr_inst->reg_2);
             break;
         }
         case AM_HL_SPR: {
