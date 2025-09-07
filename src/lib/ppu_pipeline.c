@@ -11,7 +11,7 @@ void pixel_fifo_push(u32 value) {
         ppu_get_context()->pfc.pixel_fifo.head = ppu_get_context()->pfc.pixel_fifo.tail = next;
     } else {
         ppu_get_context()->pfc.pixel_fifo.tail->next = next;
-        ppu_get_context()->pfc.pixel_fifo.tail = ppu_get_context()->pfc.pixel_fifo.tail->next;
+        ppu_get_context()->pfc.pixel_fifo.tail = next;
     }
      ++ppu_get_context()->pfc.pixel_fifo.size;
 }
@@ -98,7 +98,7 @@ void pipeline_load_sprite_tile() {
     while (le) {
         int sp_x = (le->entry.x - 8) + (lcd_get_context()->sc_x % 8);
         if ((sp_x >= ppu_get_context()->pfc.fetch_x && sp_x < ppu_get_context()->pfc.fetch_x + 8) || (
-            sp_x >= ppu_get_context()->pfc.fetch_x && (sp_x + 8) < ppu_get_context()->pfc.fetch_x + 8
+            (sp_x + 8) >= ppu_get_context()->pfc.fetch_x && (sp_x + 8) < ppu_get_context()->pfc.fetch_x + 8
         )) {
             ppu_get_context()->fetched_entries[ppu_get_context()->fetched_entry_count++] = le->entry;
         }

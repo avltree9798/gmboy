@@ -11,7 +11,7 @@ cpu_context ctx = {0};
 #define CPU_DEBUG 0
 
 void cpu_init() {
-    ctx.regs.pc = 0x100;
+    ctx.regs.pc = 0x0000;
     ctx.regs.sp = 0xFFFE;
     *((short *)&ctx.regs.a) = 0xB001;
     *((short *)&ctx.regs.b) = 0x1300;
