@@ -2,6 +2,7 @@
 #include <common.h>
 #include <emu.h>
 #include <bus.h>
+#include <ppu.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -10,7 +11,7 @@
 SDL_Window* sdl_window;
 SDL_Renderer* sdl_renderer;
 SDL_Texture* sdl_texture;
-SDL_Surface* sdl_surface;
+SDL_Surface* sdl_screen;
 
 SDL_Window* sdl_debug_window;
 SDL_Renderer* sdl_debug_renderer;
@@ -25,6 +26,22 @@ void ui_init() {
     printf("TTF INIT\n");
     TTF_Init();
     SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &sdl_window, &sdl_renderer);
+    sdl_screen = SDL_CreateRGBSurface(
+        0,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        32,
+        0x00FF0000,
+        0x0000FF00,
+        0x000000FF,
+        0xFF000000
+    );
+    sdl_texture = SDL_CreateTexture(
+        sdl_renderer,
+        SDL_PIXELFORMAT_ARGB8888,
+        SDL_TEXTUREACCESS_STREAMING,
+        SCREEN_WIDTH, SCREEN_HEIGHT
+    );
     SDL_CreateWindowAndRenderer(
         16 * 8 * scale,
         32 * 8 * scale,
@@ -32,6 +49,7 @@ void ui_init() {
         &sdl_debug_window,
         &sdl_debug_renderer
     );
+    
     sdl_debug_texture = SDL_CreateTexture(
         sdl_debug_renderer,
         SDL_PIXELFORMAT_ARGB8888,
@@ -54,7 +72,11 @@ void delay(u32 ms) {
     SDL_Delay(ms);
 }
 
-static unsigned long tile_colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000}; 
+u32 get_ticks() {
+    return SDL_GetTicks();
+}
+
+static unsigned long tile_colours[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000}; 
 
 void display_tile(SDL_Surface *surface, u16 start_location, u16 tile_num, int x, int y) {
     SDL_Rect rc;
@@ -67,14 +89,14 @@ void display_tile(SDL_Surface *surface, u16 start_location, u16 tile_num, int x,
             u8 hi = !!(b1 & (1 << bit)) << 1;
             u8 lo = !!(b2 & (1 << bit));
 
-            u8 color = hi | lo;
+            u8 colour = hi | lo;
 
             rc.x = x + ((7 - bit) * scale);
             rc.y = y + (tileY / 2 * scale);
             rc.w = scale;
             rc.h = scale;
 
-            SDL_FillRect(surface, &rc, tile_colors[color]);
+            SDL_FillRect(surface, &rc, tile_colours[colour]);
         }
     }
 }
@@ -112,6 +134,27 @@ void update_debug_window() {
 }
 
 void ui_update() {
+     SDL_Rect rc;
+    rc.x = rc.y = 0;
+    rc.w = rc.h = 2048;
+
+    u32 *video_buffer = ppu_get_context()->video_buffer;
+
+    for (int line_num = 0; line_num < YRES; line_num++) {
+        for (int x = 0; x < XRES; x++) {
+            rc.x = x * scale;
+            rc.y = line_num * scale;
+            rc.w = scale;
+            rc.h = scale;
+
+            SDL_FillRect(sdl_screen, &rc, video_buffer[x + (line_num * XRES)]);
+        }
+    }
+
+    SDL_UpdateTexture(sdl_texture, NULL, sdl_screen->pixels, sdl_screen->pitch);
+    SDL_RenderClear(sdl_renderer);
+    SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+    SDL_RenderPresent(sdl_renderer);
     update_debug_window();
 }
 

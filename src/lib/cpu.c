@@ -8,6 +8,8 @@
 
 cpu_context ctx = {0};
 
+#define CPU_DEBUG 0
+
 void cpu_init() {
     ctx.regs.pc = 0x100;
     ctx.regs.sp = 0xFFFE;
@@ -49,6 +51,7 @@ bool cpu_step() {
         fetch_instruction();
         emu_cycles(1);
         fetch_data();
+#if CPU_DEBUG == 1
         char flags[16];
         sprintf(flags, "%c%c%c%c", 
             ctx.regs.f & (1 << 7) ? 'Z' : '-',
@@ -72,7 +75,7 @@ bool cpu_step() {
         }
         dbg_update();
         dbg_print();
-
+#endif
         execute();
     } else {
         emu_cycles(1);

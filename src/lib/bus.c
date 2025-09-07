@@ -13,7 +13,7 @@
 // 0x9C00 - 0x9FFF : BG Map 2
 // 0xA000 - 0xBFFF : Cartridge RAM
 // 0xC000 - 0xCFFF : RAM Bank 0
-// 0xD000 - 0xDFFF : RAM Bank 1-7 - switchable - Color only
+// 0xD000 - 0xDFFF : RAM Bank 1-7 - switchable - colour only
 // 0xE000 - 0xFDFF : Reserved - Echo RAM
 // 0xFE00 - 0xFE9F : Object Attribute Memory
 // 0xFEA0 - 0xFEFF : Reserved - Unusable
