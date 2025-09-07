@@ -73,6 +73,7 @@ typedef struct {
     u32 current_frame;
     u32 line_ticks;
     u32* video_buffer;
+    u32 window_line;
 } ppu_context;
 
 void ppu_init();
@@ -86,3 +87,4 @@ u8 ppu_oam_read(u16 address);
 
 void ppu_vram_write(u16 address, u8 value);
 u8 ppu_vram_read(u16 address);
+bool window_visible();
