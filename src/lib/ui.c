@@ -3,6 +3,7 @@
 #include <emu.h>
 #include <bus.h>
 #include <ppu.h>
+#include <joypad.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -158,9 +159,28 @@ void ui_update() {
     update_debug_window();
 }
 
+void ui_on_key(bool down, u32 key_code) {
+    switch (key_code) {
+        case SDLK_z: joypad_get_state()->b = down; break;
+        case SDLK_x: joypad_get_state()->a = down; break;
+        case SDLK_RETURN: joypad_get_state()->start = down; break;
+        case SDLK_TAB: joypad_get_state()->select = down; break;
+        case SDLK_UP: joypad_get_state()->up = down; break;
+        case SDLK_DOWN: joypad_get_state()->down = down; break;
+        case SDLK_LEFT: joypad_get_state()->left = down; break;
+        case SDLK_RIGHT: joypad_get_state()->right = down; break;
+    }
+}
+
 void ui_handle_events() {
     SDL_Event e;
     while (SDL_PollEvent(&e) > 0) {
+        if (e.type == SDL_KEYDOWN) {
+            ui_on_key(true, e.key.keysym.sym);
+        }
+        if (e.type == SDL_KEYUP) {
+            ui_on_key(false, e.key.keysym.sym);
+        }
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE) {
             emu_get_context()->die = true;
             SDL_DestroyWindow(sdl_window);
