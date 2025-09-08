@@ -4,6 +4,7 @@
 #include <bus.h>
 #include <ppu.h>
 #include <joypad.h>
+#include <apu.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -23,7 +24,10 @@ static int scale = 4;
 
 void ui_init() {
     printf("SDL INIT\n");
-    SDL_Init(SDL_INIT_VIDEO);
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
+        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+    }
+    apu_init(48000);
     printf("TTF INIT\n");
     TTF_Init();
     SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &sdl_window, &sdl_renderer);

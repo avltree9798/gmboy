@@ -7,6 +7,8 @@ static const int TICKS_PER_LINE = 456;
 static const int YRES = 144;
 static const int XRES = 160;
 
+#define TARGET_FPS 60
+
 typedef enum {
     FS_TILE,
     FS_DATA0,

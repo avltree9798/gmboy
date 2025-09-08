@@ -9,6 +9,8 @@
 #include <ui.h>
 #include <dma.h>
 #include <ppu.h>
+#include <bootrom.h>
+#include <apu.h>
 
 static emu_context ctx;
 
@@ -38,9 +40,14 @@ void* cpu_run(void* p) {
 
 int emu_run(int argc, char** argv) {
     if (argc < 2) {
-        printf("Usage: emu <rom_file>\n");
+        printf("Usage: %s <rom.gb> [bootrom.bin]\n", argv[0]);
         return -1;
     }
+    // Optional 2nd arg: path to boot ROM
+    if (argc >= 3 && bootrom_load(argv[2])) {
+        printf("Loaded boot ROM: %s\n", argv[2]);
+    }
+    bootrom_reset();
     if (!cart_load(argv[1])) {
         printf("Failed to load ROM file: %s\n", argv[1]);
         return -2;
@@ -70,6 +77,7 @@ void emu_cycles(int cpu_cycles) {
             ctx.ticks ++;
             timer_tick();
             ppu_tick();
+            apu_tick();
         }
         dma_tick();
     }

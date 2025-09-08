@@ -75,11 +75,19 @@ DEBUG=2 ./build/gmboy <rom_file>
 - Entry point that coordinates all subsystems
 - Runs CPU in a separate thread
 
-**PPU (Picture Processing Unit) (`src/lib/ppu.c`, `src/include/ppu.h`)**
-- Handles Game Boy graphics rendering
-- Manages VRAM and OAM memory regions
-- Implementation of tile-based rendering system
-- Currently supports tile debug view
+**PPU (Picture Processing Unit)**
+- Main PPU file (`src/lib/ppu.c`, `src/include/ppu.h`):
+  - Handles Game Boy graphics rendering
+  - Manages VRAM and OAM memory regions
+  - Implementation of tile-based rendering system
+- PPU State Machine (`src/lib/ppu_sm.c`, `src/include/ppu_sm.h`):
+  - Implements the different PPU modes (OAM, Transfer, HBlank, VBlank)
+  - Handles state transitions between modes
+- PPU Pipeline (`src/lib/ppu_pipeline.c`):
+  - Implements the pixel rendering pipeline
+- LCD Controller (`src/lib/lcd.c`, `src/include/lcd.h`):
+  - Handles the LCD control registers
+  - Manages LCD modes, window and background settings
 
 **Timer (`src/lib/timer.c`, `src/include/timer.h`)**
 - Implements Game Boy timer system
@@ -90,6 +98,11 @@ DEBUG=2 ./build/gmboy <rom_file>
 - Handles the Game Boy's interrupt system
 - Supports VBlank, LCD STAT, Timer, Serial, and Joypad interrupts
 - CPU interrupt handling and request management
+
+**Joypad (`src/lib/joypad.c`, `src/include/joypad.h`)**
+- Handles Game Boy joypad input
+- Manages the joypad register and input state
+- Supports directional pad and button inputs
 
 **DMA (`src/lib/dma.c`, `src/include/dma.h`)**
 - Implements Direct Memory Access functionality
@@ -112,6 +125,10 @@ DEBUG=2 ./build/gmboy <rom_file>
 - Debugging utilities and output formatting
 - Trace logging of CPU operations
 
+**I/O (`src/lib/io.c`, `src/include/io.h`)**
+- Handles I/O port operations
+- Manages I/O register memory mapping
+
 ### Project Structure
 ```
 src/
@@ -128,7 +145,10 @@ src/
 │   ├── instructions.h
 │   ├── interrupts.h
 │   ├── io.h
-│   ├── ppu.h
+│   ├── joypad.h    # Joypad controller
+│   ├── lcd.h       # LCD controller
+│   ├── ppu.h       # Picture Processing Unit
+│   ├── ppu_sm.h    # PPU state machine
 │   ├── ram.h
 │   ├── stack.h
 │   ├── timer.h
@@ -146,7 +166,11 @@ src/
     ├── instructions.c
     ├── interrupts.c
     ├── io.c
-    ├── ppu.c
+    ├── joypad.c    # Joypad implementation
+    ├── lcd.c       # LCD controller implementation
+    ├── ppu.c       # Main PPU implementation
+    ├── ppu_pipeline.c # PPU pixel pipeline
+    ├── ppu_sm.c    # PPU state machine implementation
     ├── ram.c
     ├── stack.c
     ├── timer.c
@@ -183,6 +207,22 @@ src/
 - Tile-based rendering (8x8 pixel tiles)
 - Manages OAM for sprite rendering
 - Debug window shows tile data
+- PPU implementation is split across multiple files:
+  - Main PPU logic in `ppu.c`
+  - State machine in `ppu_sm.c` 
+  - Pixel pipeline in `ppu_pipeline.c`
+  - LCD controller in `lcd.c`
+
+**LCD Controller**
+- Manages LCD control register (LCDC)
+- Handles LCD status register (STAT)
+- Controls window and background positioning
+- Manages palette data for background and sprites
+
+**Joypad Implementation**
+- Handles button inputs (A, B, Start, Select)
+- Handles directional inputs (Up, Down, Left, Right)
+- Manages joypad register and interrupt generation
 
 **Debugging Features**
 - CPU execution trace shows PC, instruction, opcode bytes, and register states
@@ -197,3 +237,9 @@ src/
 
 ### Testing
 Currently no automated test suite - testing done by running ROM files and observing emulator behavior and debug output. A good set of test ROMs can be found in the Blargg test suite or similar Game Boy test ROM collections.
+
+### ROM Usage
+Place ROM files in the `roms/` directory and run the emulator pointing to the ROM file:
+```bash
+./build/gmboy roms/your_game.gb
+```

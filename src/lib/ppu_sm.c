@@ -5,6 +5,7 @@
 #include <ppu.h>
 #include <common.h>
 #include <string.h>
+#include <cart.h>
 
 void increment_ly() {
     if (window_visible() && lcd_get_context()->ly >= lcd_get_context()->win_y && lcd_get_context()->ly < lcd_get_context()->win_y + YRES) {
@@ -99,7 +100,7 @@ void ppu_mode_xfer() {
     }
 }
 
-static u32 target_frame_time = 1000 / 60;
+static u32 target_frame_time = 1000 / TARGET_FPS;
 static long prev_frame_time = 0;
 static long start_timer = 0;
 static long frame_count = 0;
@@ -129,6 +130,9 @@ void ppu_mode_hblank() {
                 start_timer = end;
                 frame_count = 0;
                 printf("FPS: %u\n", fps);
+                if (cart_need_save()) {
+                    cart_battery_save();
+                }
             }
 
             ++frame_count;

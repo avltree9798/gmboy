@@ -26,3 +26,5 @@ void cart_write(u16 address, u8 value);
 
 u8 cpu_get_ie_register();
 void cpu_set_ie_register(u8 value);
+bool cart_need_save();
+void cart_battery_save();

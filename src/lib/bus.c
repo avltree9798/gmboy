@@ -5,6 +5,7 @@
 #include <io.h>
 #include <ppu.h>
 #include <dma.h>
+#include <bootrom.h>
 
 // 0x0000 - 0x3FFF : ROM Bank 0
 // 0x4000 - 0x7FFF : ROM Bank 1 - Switchable
@@ -21,6 +22,9 @@
 // 0xFF80 - 0xFFFE : Zero Page
 
 u8 bus_read(u16 address) {
+    if (bootrom_active_window(address)) {
+        return bootrom_read(address);
+    }
     if (address < 0x8000) {
         //ROM Data
         return cart_read(address);
